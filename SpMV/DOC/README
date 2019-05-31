@@ -1,0 +1,197 @@
+CUDA_ITSOL SpMV (Sparse Matrix-by-Vector) Kernels
+Version:  2011.6.6
+Authors: Ruipeng Li, Yousef Saad
+
+----------
+DISCLAIMER
+----------
+
+Copyright 2011, The Regents of the University of Minnesota.
+
+A copy of  the licencing agreement is attached in  the file LGPL.  For
+additional information  contact the Free Software  Foundation Inc., 59
+Temple Place - Suite 330, Boston, MA 02111, USA or visit the web-site
+
+http://www.gnu.org/copyleft/lesser.html
+
+This program is a free software; you can redistribute and/or modify it
+for NON-COMMERCIAL  purposes. This program is distributed  in the hope
+that it  will be useful, but  WITHOUT ANY WARRANTY,  including that of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+---------------
+CUDA_ITSOL SpMV
+---------------
+
+This code is written in C/C++ and CUDA for testing GPU SpMV kernels in
+four  formats.   Both  single  precision  and   Double  precision  are
+supported. y = A * x. A is an n*n sparse matrix. x and y are n*1 dense
+vectors.
+
+------------------
+BUILD INSTRUCTIONS
+------------------
+
+System Requirement: CUDA library. 
+http://developer.nvidia.com/cuda-downloads
+
+To compile the driver program:
+1. set CUDA_INSTALL_PATH in 'makefile'
+2. make
+
+
+The driver  program 'spmvS.ex is' for single  precision and 'spmvD.ex'
+is for double precision. The code has been successfully compiled under
+gcc/g++ 4.2.3, cuda-3.1 and tested on NVIDIA GPU C1060.
+
+-------------- 
+TEST PROGRAM 
+--------------
+
+% spmvS(D).ex  filename.mtx
+
+'filename.mtx' is a MatrixMarket format file which is supported
+by University of Florida Sparse Matrix Collection [3].
+
+----
+I/O
+----
+Sparse matrices are read from MatrixMarket files (*.mtx). I/O
+routines are provided by NIST [4] in files mmio.c, mmio.h
+
+--------------
+MATRIX FORMATS
+--------------
+
+The following SpMV kernels are provided:
+-- CSR-scalar kernel
+   Compressed Sparse Row format. 
+   one thread per row
+-- CSR-Vector kernel
+   Compressed Sparse Row format.
+   Half-warp (16 threads) per row
+-- JAD kernel
+   Jagged Diagonal format
+   one thread per row
+-- DIA kernel
+   Diagonal format
+   one thread per row
+
+For references of these formats, see,  e.g. [1]. The DIA format in NOT
+for general sparse matrices. Matrix conversion to the DIA format might
+be  failed if  the number  of  diagonals exceeds  the maximal  allowed
+number. Matrix  conversion routines  are provided by  SPARSKIT library
+[2]. For  more Spmv kernels in  other formats, in  particular, the HYB
+format, consider [5].   A performance evaluation can be  found in file
+DOC/spmv.pdf
+
+For more information, see,
+
+R.  Li and  Y. Saad.  GPU-accelerated preconditioned  iterative linear
+solvers.   Report  umsi-2010-112,  Minnesota Supercomputer  Institute,
+University of Minnesota, Minneapolis, MN, 2010.
+
+http://www-users.cs.umn.edu/~saad/PDF/umsi-2010-112.pdf
+
+---------
+ROUTINES
+---------
+
+double wall_timer();
+# Timing by 'gettimeofday'
+
+void print_header();
+# Output precision info
+
+double error_norm(REAL *x, REAL *y, int);
+# Compute ||x-y||_2 / ||x||_2
+
+void FreeCOO(struct coo_t*);
+# clean COO structure
+
+void FreeCSR(struct csr_t*);
+# clean CSR structure
+
+void FreeJAD(struct jad_t*);
+# clean JAD structure
+
+void FreeDIA(struct dia_t*);
+# clean DIA structure
+
+void COO2CSR(struct coo_t*, struct csr_t*);
+# convert COO format to CSR format
+
+void CSR2JAD(struct csr_t *csr, struct jad_t *jad);
+# convert CSR format to JAD format
+
+void PadJAD32(struct jad_t*);
+# Pad zeros in JAD such that nnz in each JAD is
+a multiple of 32
+
+int CSR2DIA(struct csr_t*, struct dia_t*);
+# convert CSR format to DIA format
+
+int read_coo_MM(struct coo_t*, char*);
+# load COO matrix from MTX file
+
+void cuda_init(int, char **);
+# Initialize device and get device info
+
+void cuda_check_err();
+# Check CUDA error when finalizing
+
+void coocsr_(int*, int*, REAL*, 
+int*, int*, REAL*, int*, int*);
+
+void csrjad_(int*, REAL*, int*, int*, 
+int*, int*, REAL*, int*, int*); 
+
+void csrdia_(int*, int*, int*, REAL*, int*, 
+int*, int*, REAL*, int*, REAL*, int*, int*, int*);
+# Format conversion routines in SPARSKIT
+
+void spmv_csr_cpu(struct csr_t*, REAL*, REAL*);
+# CPU CSR SpMV
+
+void spmv_csr_scalar(struct csr_t*, REAL*, REAL*);
+# GPU CSR scalar SpMV
+
+void spmv_csr_vector(struct csr_t*, REAL*, REAL*);
+# GPU CSR vector SpMV
+
+void spmv_jad(struct jad_t*, REAL*, REAL*);
+# GPU JAD SpMV
+
+void spmv_dia(struct dia_t*, REAL*, REAL*);
+# GPU DIA SpMV
+
+-----------
+REFERENCES
+-----------
+
+[1] Y. Saad, Iterative methods for sparse linear systems, 2nd edition,
+SIAM, Philadelpha, PA, 2003.
+
+[2]  Y.   Saad,  SPARSKIT:  A   basic  tool  kit  for   sparse  matrix
+computations,  Tech.   Report  RIACS-90-20,  Research   Institute  for
+Advanced Computer Science, NASA Ames Re- search Center, Moffett Field,
+CA, 1990.
+
+[3] Timothy A. Davis,  University of florida sparse matrix collection,
+na digest, 1994.
+
+[4] MatrixMarket file format
+http://math.nist.gov/MatrixMarket/formats.html#MMformat
+
+[5] Nathan Bell and Michael Garland, Implementing sparse matrix-vector
+multiplication on throughput-oriented  processors, SC ’09: Proceedings
+of the Conference on  High Per- formance Computing Networking, Storage
+and Analysis (New York, NY, USA), ACM, 2009, pp. 1–11.
+
+------------------------------------------ 
+Report any problems, suggestions, etc.. to
+
+Ruipeng Li, 
+Department of Computer Science & Engineering
+University of Minnesota
+rli@cs.umn.edu
